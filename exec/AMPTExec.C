@@ -88,7 +88,7 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
 
 
     // set centrality estimator 
-    TFile* getcentrestimator = TFile::Open(Form("/home/neo/Nina/GGFW/CentralityTask_b18_g00.root"), "READ");
+    TFile* getcentrestimator = TFile::Open("CentralityTask.root", "READ");
     if(!getcentrestimator){ printf("Could not open centrality estimator"); return; };
     TGraph* getcentrality = (TGraph*)getcentrestimator->Get("fCentralityFromImpact");       // -->  multiplicity / vom / b
     getcentrestimator->Close();
