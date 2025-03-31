@@ -55,9 +55,9 @@ namespace CalculatorFunctions {
 Calculator::Calculator() : flowcont{0}, flowptcont{0}, idname(""), current_suffix("")
 {
 }
-Calculator::Calculator(TFile* infile) : flowcont{0}, flowptcont{0}, idname(""), current_suffix("")
+Calculator::Calculator(TFile* infile,bool gap) : flowcont{0}, flowptcont{0}, idname(""), current_suffix("")
 {
-  readData(infile);
+  readData(infile,gap);
 }
 Calculator::~Calculator()
 {
@@ -65,7 +65,7 @@ Calculator::~Calculator()
   delete flowptcont;
 };
 
-void Calculator::readData(TFile* infile)
+void Calculator::readData(TFile* infile, bool gap)
 {
   // Get flow container
   flowcont = dynamic_cast<FlowContainer*>(infile->Get(Form("FlowContainer")));
@@ -80,10 +80,13 @@ void Calculator::readData(TFile* infile)
   else {
     // Get the correlator profiles
     corr_list = flowptcont->getCovList();
+    flowptcont->setUseGapMethod(gap);
     std::cout<<"Uses gap? "<<flowptcont->usesGap()<<std::endl;
     idname = (flowptcont->usesGap())?"Gap":"Full";
+    //weird issue where flowptcont is always set to full at this point
+    
     std::cout<<"idname? "<<idname<<std::endl;
-    idname = "Gap";
+    //idname = "Gap";
 
     std::cout<<"test: mpar? "<<flowptcont->getMpar()<<std::endl;
    // flowptcont->setMpar(8);
@@ -98,16 +101,331 @@ TH1D* Calculator::calculate(ObsFunc func, int i)
 {
   return (this->*func)(i);
 }
+
+void Calculator::Rebin(int nbins, double* binedges)
+{
+  //flowcont->SetMultiRebin(nbins,binedges);
+  flowcont->SetMultiRebin(nbins,binedges); //at some point make this less hardcoded
+  flowptcont->rebinMulti(nbins,binedges);
+  return;
+}
+
 TH1D* Calculator::calculate(PtDiffFunc func, int i, double min, double max)
 {
   return (this->*func)(i, min, max);
 }
 
+TH1D* Calculator::test0CV22pt2(int i)
+{
+  auto v22pt2_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt0",idname.c_str())));
+  // First get the <v2^2*deltapt^2> term
+  TH1D* reth = dynamic_cast<TH1D*>(v22pt2_Mpt0_profile->getHist(i));
+  
+  return reth;
+}
 
-TH1D* Calculator::getNormNC(int n, int m, int k, int i){
-    auto denom = getNN(n, m, Form("Ch%s",idname.c_str()), i);
-    denom->Multiply(flowptcont->getCentralMomentHist(i, k));
-    return denom;
+TH1D* Calculator::test1CV22pt2(int i)
+{
+    auto mpt_hist = getMpt(i);
+
+  auto v22pt2_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt1",idname.c_str())));
+  auto reth = dynamic_cast<TH1D*>(v22pt2_Mpt1_profile->getHist(i));
+  reth->Multiply(mpt_hist);
+
+  return reth;
+}
+
+TH1D* Calculator::test2CV22pt2(int i)
+{
+  
+  auto mpt_hist = getMpt(i);
+
+  auto v22pt2_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt2",idname.c_str())));
+  auto reth = dynamic_cast<TH1D*>(v22pt2_Mpt2_profile->getHist(i));
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt_hist);
+  reth->Multiply(mpt_sq_hist);
+  return reth;
+  
+}
+
+TH1D* Calculator::test0CV22pt3(int i)
+{
+  auto v22pt3_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt3_Mpt0",idname.c_str())));
+
+
+  auto reth = dynamic_cast<TH1D*>(v22pt3_Mpt0_profile->getHist(i));
+  return reth;
+
+}
+
+
+TH1D* Calculator::test1CV22pt3(int i)
+{
+  auto v22pt3_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt3_Mpt1",idname.c_str())));
+   
+  auto mpt_hist = getMpt(i);
+
+  auto reth = dynamic_cast<TH1D*>(v22pt3_Mpt1_profile->getHist(i));
+  reth->Multiply(mpt_hist);
+  return reth;
+
+}
+
+TH1D* Calculator::test2CV22pt3(int i)
+{
+  auto v22pt3_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt3_Mpt2",idname.c_str())));
+  
+  auto mpt_hist = getMpt(i);
+  //mpt_hist->Multiply(mpt_hist);
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt_hist);
+
+  auto reth = dynamic_cast<TH1D*>(v22pt3_Mpt2_profile->getHist(i));
+  reth->Multiply(mpt_sq_hist);
+  return reth;
+}
+
+TH1D* Calculator::test3CV22pt3(int i)
+{
+
+    auto v22pt3_Mpt3_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt3_Mpt3",idname.c_str())));
+
+    auto mpt_hist = getMpt(i);
+
+    // mpt_hist->Multiply(mpt_hist);
+
+    // mpt_hist->Multiply(mpt_hist);
+    auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+    mpt_sq_hist->Multiply(mpt_hist);
+    auto mpt_cube_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_cube_hist"));
+    mpt_cube_hist->Multiply(mpt_sq_hist);
+
+    auto reth = dynamic_cast<TH1D*>(v22pt3_Mpt3_profile->getHist(i));
+    reth->Multiply(mpt_cube_hist);
+
+  return reth;
+}
+TH1D* Calculator::test0CV22pt4(int i)
+{
+  auto v22pt4_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt0",idname.c_str())));
+  TH1D* reth = dynamic_cast<TH1D*>(v22pt4_Mpt0_profile->getHist(i));
+  
+  return reth;
+
+}
+
+
+TH1D* Calculator::test1CV22pt4(int i)
+{
+    auto v22pt4_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt1",idname.c_str())));
+     auto mpt_hist = getMpt(i);
+    auto reth = dynamic_cast<TH1D*>(v22pt4_Mpt1_profile->getHist(i));
+    reth->Multiply(mpt_hist);
+    
+  return reth;
+
+}
+
+TH1D* Calculator::test2CV22pt4(int i)
+{
+    auto v22pt4_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt2",idname.c_str())));
+    auto mpt_hist = getMpt(i);
+
+    auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+    mpt_sq_hist->Multiply(mpt_hist);
+
+    auto reth = dynamic_cast<TH1D*>(v22pt4_Mpt2_profile->getHist(i));
+    reth->Multiply(mpt_sq_hist);
+      return reth;
+}
+
+TH1D* Calculator::test3CV22pt4(int i)
+{
+
+  auto v22pt4_Mpt3_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt3",idname.c_str())));
+  auto mpt_hist = getMpt(i);
+ 
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt_hist);
+  auto mpt_cube_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_cube_hist"));
+  mpt_cube_hist->Multiply(mpt_sq_hist);
+
+  auto reth = dynamic_cast<TH1D*>(v22pt4_Mpt3_profile->getHist(i));
+  reth->Multiply(mpt_cube_hist);
+  
+  return reth;
+}
+
+TH1D* Calculator::test4CV22pt4(int i)
+{
+
+  auto v22pt4_Mpt4_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt4",idname.c_str())));
+  
+  auto mpt_hist = getMpt(i);
+
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt_hist);
+  auto mpt_cube_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_cube_hist"));
+  mpt_cube_hist->Multiply(mpt_sq_hist);
+  auto mpt_frth_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_frth_hist"));
+  mpt_frth_hist->Multiply(mpt_cube_hist);
+
+  auto reth = dynamic_cast<TH1D*>(v22pt4_Mpt4_profile->getHist(i));
+  reth->Multiply(mpt_frth_hist);
+
+  return reth;
+}
+
+
+TH1D* Calculator::test0CV24pt(int i)
+{
+  BootstrapProfile* v24pt_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt1_Mpt0",idname.c_str())));
+  TH1D* reth = dynamic_cast<TH1D*>(v24pt_Mpt0_profile->getHist(i));
+  
+  
+  return reth;
+}
+
+TH1D* Calculator::test1CV24pt(int i)
+{
+  BootstrapProfile* v24pt_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt1_Mpt1",idname.c_str())));
+  auto reth = dynamic_cast<TH1D*>(v24pt_Mpt1_profile->getHist(i));
+  auto mpt_hist = getMpt(i);
+  reth->Multiply(mpt_hist);
+  
+  return reth;
+}
+
+
+TH1D* Calculator::test0CV24pt2(int i)
+{
+  BootstrapProfile* v24pt2_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt2_Mpt0",idname.c_str())));
+  TH1D* reth = dynamic_cast<TH1D*>(v24pt2_Mpt0_profile->getHist(i));
+  
+  return reth;
+}
+
+TH1D* Calculator::test1CV24pt2(int i)
+{
+  BootstrapProfile* v24pt2_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt2_Mpt1",idname.c_str())));
+
+  auto reth = dynamic_cast<TH1D*>(v24pt2_Mpt1_profile->getHist(i));
+  auto mpt = getMpt(i);
+  reth->Multiply(mpt);
+  
+  return reth;
+}
+
+TH1D* Calculator::test2CV24pt2(int i)
+{
+  BootstrapProfile* v24pt2_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt2_Mpt2",idname.c_str())));
+  auto mpt = getMpt(i);
+
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt);
+
+  auto reth = dynamic_cast<TH1D*>(v24pt2_Mpt2_profile->getHist(i));
+  reth->Multiply(mpt_sq_hist);
+  
+  return reth;
+}
+
+
+TH1D* Calculator::v2test0CV24pt2(int i)
+{
+  // First get the <v2^4*deltapt^2> term
+  BootstrapProfile* v24pt2_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt2_Mpt0",idname.c_str())));
+  BootstrapProfile* v24pt2_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt2_Mpt1",idname.c_str())));
+  BootstrapProfile* v24pt2_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s24pt2_Mpt2",idname.c_str())));
+  TH1D* reth = dynamic_cast<TH1D*>(v24pt2_Mpt0_profile->getHist(i));
+  auto v24pt_pt = dynamic_cast<TH1D*>(v24pt2_Mpt1_profile->getHist(i));
+  auto mpt = getMpt(i);
+  v24pt_pt->Multiply(mpt);
+
+  
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt);
+
+  auto v24_pt2 = dynamic_cast<TH1D*>(v24pt2_Mpt2_profile->getHist(i));
+  v24_pt2->Multiply(mpt_sq_hist);
+
+  if(flowptcont->usesGap()==0){reth->Add(v24pt_pt,-2);}
+  else{reth->Add(v24pt_pt);}
+  reth->Add(v24_pt2);
+
+  return reth;
+}
+
+TH1D* Calculator::v2test1CV24pt2(int i)
+{
+  // Then subtract the 4 x <v2^2>*<vn^2*deltapt^2> term
+    BootstrapProfile* v22pt2_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt0",idname.c_str())));
+    BootstrapProfile* v22pt2_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt1",idname.c_str())));
+    BootstrapProfile* v22pt2_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt2",idname.c_str())));
+    auto mpt = getMpt(i);
+    auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt->Clone("mpt_sq_hist"));
+    mpt_sq_hist->Multiply(mpt);
+
+    auto v22deltapt2_v22 = dynamic_cast<TH1D*>(v22pt2_Mpt0_profile->getHist(i));
+    auto v22pt_mpt = dynamic_cast<TH1D*>(v22pt2_Mpt1_profile->getHist(i));
+    v22pt_mpt->Multiply(mpt);
+   
+
+    auto v22_mpt_mpt = dynamic_cast<TH1D*>(v22pt2_Mpt2_profile->getHist(i));
+    v22_mpt_mpt->Multiply(mpt_sq_hist);
+    
+    if(flowptcont->usesGap()==0){v22deltapt2_v22->Add(v22pt_mpt,-2);}
+    else{v22deltapt2_v22->Add(v22pt_mpt);}
+    v22deltapt2_v22->Add(v22_mpt_mpt);
+
+    v22deltapt2_v22->Multiply(getNN(2, 2, Form("Ch%s",idname.c_str()), i));
+    v22deltapt2_v22->Scale(-4);
+  return v22deltapt2_v22;
+}
+
+TH1D* Calculator::v2test2CV24pt2(int i)
+{
+  // Then subtract the 4 x <v2^2*deltapt>*<v2^2*deltapt> term
+  BootstrapProfile* v22pt_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt1_Mpt0",idname.c_str())));
+  BootstrapProfile* v22pt_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt1_Mpt1",idname.c_str())));
+  auto mpt = getMpt(i);
+  auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt->Clone("mpt_sq_hist"));
+  mpt_sq_hist->Multiply(mpt);
+
+  auto v22deltapt = dynamic_cast<TH1D*>(v22pt_Mpt0_profile->getHist(i));
+  auto v22_mpt = dynamic_cast<TH1D*>(v22pt_Mpt1_profile->getHist(i));
+  v22_mpt->Multiply(mpt);
+  v22deltapt->Add(v22_mpt,-1);
+
+  auto v22deltapt_v22deltapt = dynamic_cast<TH1D*>(v22deltapt->Clone("v22deltapt_v22deltapt"));
+  v22deltapt_v22deltapt->Multiply(v22deltapt);
+
+  v22deltapt_v22deltapt->Scale(-4);
+  
+  return v22deltapt_v22deltapt;
+}
+
+
+TH1D* Calculator::v2test3CV24pt2(int i)
+{
+  auto v22 = getNN(2, 2, Form("Ch%s",idname.c_str()), i);
+
+    auto v22_v22_deltapt2 = dynamic_cast<TH1D*>(v22->Clone("v22_v22_deltapt2"));
+    v22_v22_deltapt2->Multiply(v22);
+
+    v22_v22_deltapt2->Multiply(flowptcont->getCentralMomentHist(i,2));
+    v22_v22_deltapt2->Scale(4);
+    return v22_v22_deltapt2;
+}
+
+
+TH1D* Calculator::v2test4CV24pt2(int i)
+{
+  auto v24_deltapt2 = getNN(2,2,Form("Ch%s",idname.c_str()),i);
+    v24_deltapt2->Multiply(flowptcont->getCentralMomentHist(i,2));
+    v24_deltapt2->Scale(-1);
+    return v24_deltapt2;
 }
 
 TH1D* Calculator::getV22pt_Mpt0(int i){
@@ -174,13 +492,19 @@ TH1D* Calculator::getCVN2pt(int nhar, int i)
   if (flowptcont->usesCentralMoments()) {
     auto vn2pt_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s%i2pt1_Mpt0", idname.c_str(), nhar)));
     if(!vn2pt_Mpt0_profile) std::cout << Form("Ch%s%i2pt1_Mpt0", idname.c_str(), nhar) << " not found in list" << std::endl;
+
     auto vn2pt_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s%i2pt1_Mpt1", idname.c_str(), nhar)));
     if(!vn2pt_Mpt1_profile) std::cout << Form("Ch%s%i2pt1_Mpt1", idname.c_str(), nhar) << " not found in list" << std::endl;
+
     TH1D* reth = dynamic_cast<TH1D*>(vn2pt_Mpt0_profile->getHist(i));
+
     TH1D* v22_pt = dynamic_cast<TH1D*>(vn2pt_Mpt1_profile->getHist(i));
+
     auto mpt_hist(getMpt(i));
     v22_pt->Multiply(mpt_hist);
+
     reth->Add(v22_pt, -1);
+
     reth->SetNameTitle(Form("CV%i2dpt",nhar),Form("C(v_{%i}^{2},#delta#it{p}_{T})",nhar));
     return reth;
   }
@@ -201,19 +525,29 @@ TH1D* Calculator::getCV22pt2(int i)
     // First get the <v2^2*deltapt^2> term
     TH1D* reth = dynamic_cast<TH1D*>(v22pt2_Mpt0_profile->getHist(i));
     auto mpt_hist = getMpt(i);
+
     auto v22pt2_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt1",idname.c_str())));
     auto v22pt_pt = dynamic_cast<TH1D*>(v22pt2_Mpt1_profile->getHist(i));
     v22pt_pt->Multiply(mpt_hist);
-    reth->Add(v22pt_pt);
+
+    if(flowptcont->usesGap()==0){reth->Add(v22pt_pt,-2);}
+    else{reth->Add(v22pt_pt);}
+
     auto v22pt2_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt2",idname.c_str())));
     auto v22_pt2 = dynamic_cast<TH1D*>(v22pt2_Mpt2_profile->getHist(i));
     auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
     mpt_sq_hist->Multiply(mpt_hist);
     v22_pt2->Multiply(mpt_sq_hist);
     reth->Add(v22_pt2);
+    
     // Then subtract <v2^2><deltapt^2>
     auto v22_cm2 = getNN(2, 2, Form("Ch%s",idname.c_str()), i);
+    // std::cout<<"before get cm hist"<<std::endl;
+    // std::cout<<"bins in v22 hist: "<<v22_cm2->GetNbinsX()<<std::endl;
+    // std::cout<<"bins in cm2 hist: "<<flowptcont->getCentralMomentHist(i, 2)->GetNbinsX()<<std::endl;
+
     v22_cm2->Multiply(flowptcont->getCentralMomentHist(i, 2));
+    // std::cout<<"multiplication attempted"<<std::endl;
     reth->Add(v22_cm2, -1);
 
     reth->SetNameTitle("CV22dpt2","C(v_{2}^{2},#delta#it{p}_{T}^{2})");
@@ -252,18 +586,34 @@ TH1D* Calculator::getCV22pt3(int i)
     auto v22pt3_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt3_Mpt2",idname.c_str())));
     auto v22pt3_Mpt3_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt3_Mpt3",idname.c_str())));
     TH1D* reth = dynamic_cast<TH1D*>(v22pt3_Mpt0_profile->getHist(i));
+
     auto mpt_hist = getMpt(i);
+
     auto v22pt2_pt = dynamic_cast<TH1D*>(v22pt3_Mpt1_profile->getHist(i));
     v22pt2_pt->Multiply(mpt_hist);
-    mpt_hist->Multiply(mpt_hist);
+
+    auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+    mpt_sq_hist->Multiply(mpt_hist);
+
     auto v22pt_pt2 = dynamic_cast<TH1D*>(v22pt3_Mpt2_profile->getHist(i));
-    v22pt_pt2->Multiply(mpt_hist);
-    mpt_hist->Multiply(mpt_hist);
+    v22pt_pt2->Multiply(mpt_sq_hist);
+
+    auto mpt_cube_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_cube_hist"));
+    mpt_cube_hist->Multiply(mpt_sq_hist);
+
     auto v22_pt3 = dynamic_cast<TH1D*>(v22pt3_Mpt3_profile->getHist(i));
-    v22_pt3->Multiply(mpt_hist);
-    reth->Add(v22pt2_pt);
-    reth->Add(v22pt_pt2);
-    reth->Add(v22_pt3);
+    v22_pt3->Multiply(mpt_cube_hist);
+
+    if(flowptcont->usesGap()==0){
+      reth->Add(v22pt2_pt,-3);
+      reth->Add(v22pt_pt2,3);
+      reth->Add(v22_pt3,-1);
+    }
+    else{
+      reth->Add(v22pt2_pt);
+      reth->Add(v22pt_pt2);
+      reth->Add(v22_pt3,-1);
+    }
     // Then subtract the 3 x <v2^2*deltapt>*<deltapt^2> term
     auto v22deltapt_deltapt2 = getCV22pt(i);
     v22deltapt_deltapt2->Multiply(flowptcont->getCentralMomentHist(i, 2));
@@ -277,8 +627,10 @@ TH1D* Calculator::getCV22pt3(int i)
   }
   return nullptr;
 }
+
 TH1D* Calculator::getCV22pt4(int i)
 {
+  
   if (flowptcont->usesCentralMoments()) {
     // First get the <v2^2*deltapt^4> term
     auto v22pt4_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt0",idname.c_str())));
@@ -288,20 +640,42 @@ TH1D* Calculator::getCV22pt4(int i)
     auto v22pt4_Mpt4_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt4_Mpt4",idname.c_str())));
     TH1D* reth = dynamic_cast<TH1D*>(v22pt4_Mpt0_profile->getHist(i));
     auto mpt_hist = getMpt(i);
+
     auto v22pt3_pt = dynamic_cast<TH1D*>(v22pt4_Mpt1_profile->getHist(i));
     v22pt3_pt->Multiply(mpt_hist);
-    mpt_hist->Multiply(mpt_hist);
+
+    auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_sq_hist"));
+    mpt_sq_hist->Multiply(mpt_hist);
+
     auto v22pt2_pt2 = dynamic_cast<TH1D*>(v22pt4_Mpt2_profile->getHist(i));
-    v22pt2_pt2->Multiply(mpt_hist);
+    v22pt2_pt2->Multiply(mpt_sq_hist);
+
+    auto mpt_cube_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_cube_hist"));
+    mpt_cube_hist->Multiply(mpt_sq_hist);
+
     auto v22pt_pt3 = dynamic_cast<TH1D*>(v22pt4_Mpt3_profile->getHist(i));
-    v22pt_pt3->Multiply(mpt_hist);
-    mpt_hist->Multiply(mpt_hist);
+    v22pt_pt3->Multiply(mpt_cube_hist);
+
+    auto mpt_frth_hist = dynamic_cast<TH1D*>(mpt_hist->Clone("mpt_frth_hist"));
+    mpt_frth_hist->Multiply(mpt_cube_hist);
+
     auto v22_pt4 = dynamic_cast<TH1D*>(v22pt4_Mpt4_profile->getHist(i));
-    v22_pt4->Multiply(mpt_hist);
-    reth->Add(v22pt3_pt);
-    reth->Add(v22pt2_pt2);
-    reth->Add(v22pt_pt3);
-    reth->Add(v22_pt4);
+    v22_pt4->Multiply(mpt_frth_hist);
+
+    if(flowptcont->usesGap()==0){
+      reth->Add(v22pt3_pt,-4);
+      reth->Add(v22pt2_pt2,6);
+      reth->Add(v22pt_pt3,-4);
+      reth->Add(v22_pt4);
+    }
+    else{
+      reth->Add(v22pt3_pt);
+      reth->Add(v22pt2_pt2);
+      reth->Add(v22pt_pt3);
+      reth->Add(v22_pt4);
+    }
+
+    
     // Then subtract the 6 x <v2^2*deltapt2>*<deltapt^2> term
     auto v22deltapt2_deltapt2 = getCV22pt2(i);
     v22deltapt2_deltapt2->Multiply(flowptcont->getCentralMomentHist(i, 2));
@@ -333,7 +707,7 @@ TH1D* Calculator::getCV24pt(int i)
     TH1D* reth = dynamic_cast<TH1D*>(v24pt_Mpt0_profile->getHist(i));
     auto v24_pt = dynamic_cast<TH1D*>(v24pt_Mpt1_profile->getHist(i));
     auto mpt_hist = getMpt(i);
-    v24_pt->Multiply(mpt_hist);
+    if(flowptcont->usesGap()==1){v24_pt->Multiply(mpt_hist);} //due to online processing mistake that is now fixed, just to test right now with current data
     reth->Add(v24_pt, -1);
     // Then subtract the 4 x <v2^2*deltapt>*<v2^2> term
     auto v22pt_v22 = getCV22pt(i);
@@ -375,45 +749,66 @@ TH1D* Calculator::getCV24pt2(int i)
     auto v24pt_pt = dynamic_cast<TH1D*>(v24pt2_Mpt1_profile->getHist(i));
     auto mpt = getMpt(i);
     v24pt_pt->Multiply(mpt);
+
+    
+    auto mpt_sq_hist = dynamic_cast<TH1D*>(mpt->Clone("mpt_sq_hist"));
+    mpt_sq_hist->Multiply(mpt);
+
     auto v24_pt2 = dynamic_cast<TH1D*>(v24pt2_Mpt2_profile->getHist(i));
-    mpt->Multiply(mpt);
-    v24_pt2->Multiply(mpt);
-    reth->Add(v24pt_pt);
+    v24_pt2->Multiply(mpt_sq_hist);
+
+    if(flowptcont->usesGap()==0){reth->Add(v24pt_pt,-2);}
+    else{reth->Add(v24pt_pt);}
     reth->Add(v24_pt2);
 
+    
+
     // Then subtract the 4 x <v2^2>*<vn^2*deltapt^2> term
+
+
+
     BootstrapProfile* v22pt2_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt0",idname.c_str())));
     BootstrapProfile* v22pt2_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt1",idname.c_str())));
     BootstrapProfile* v22pt2_Mpt2_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt2_Mpt2",idname.c_str())));
+    
     auto v22deltapt2_v22 = dynamic_cast<TH1D*>(v22pt2_Mpt0_profile->getHist(i));
     auto v22pt_mpt = dynamic_cast<TH1D*>(v22pt2_Mpt1_profile->getHist(i));
     v22pt_mpt->Multiply(mpt);
+
     auto v22_mpt_mpt = dynamic_cast<TH1D*>(v22pt2_Mpt2_profile->getHist(i));
-    v22_mpt_mpt->Multiply(mpt);
-    v22_mpt_mpt->Multiply(mpt);
-    v22deltapt2_v22->Add(v22pt_mpt,-2);
+    v22_mpt_mpt->Multiply(mpt_sq_hist);
+    
+    if(flowptcont->usesGap()==0){v22deltapt2_v22->Add(v22pt_mpt,-2);}
+    else{v22deltapt2_v22->Add(v22pt_mpt);}
     v22deltapt2_v22->Add(v22_mpt_mpt);
+
     v22deltapt2_v22->Multiply(getNN(2, 2, Form("Ch%s",idname.c_str()), i));
     reth->Add(v22deltapt2_v22,-4);
 
     // Then subtract the 4 x <v2^2*deltapt>*<v2^2*deltapt> term
     BootstrapProfile* v22pt_Mpt0_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt1_Mpt0",idname.c_str())));
     BootstrapProfile* v22pt_Mpt1_profile = dynamic_cast<BootstrapProfile*>(corr_list->FindObject(Form("Ch%s22pt1_Mpt1",idname.c_str())));
-    auto v22deltapt_v22deltapt = dynamic_cast<TH1D*>(v22pt_Mpt0_profile->getHist(i));
+    auto v22deltapt = dynamic_cast<TH1D*>(v22pt_Mpt0_profile->getHist(i));
     auto v22_mpt = dynamic_cast<TH1D*>(v22pt_Mpt1_profile->getHist(i));
     v22_mpt->Multiply(mpt);
-    v22deltapt_v22deltapt->Add(v22_mpt,-1);
-    v22deltapt_v22deltapt->Multiply(v22deltapt_v22deltapt);
+    v22deltapt->Add(v22_mpt,-1);
+
+    auto v22deltapt_v22deltapt = dynamic_cast<TH1D*>(v22deltapt->Clone("v22deltapt_v22deltapt"));
+    v22deltapt_v22deltapt->Multiply(v22deltapt);
+
     reth->Add(v22deltapt_v22deltapt,-4);
 
     // Then add the 4 x <v2^2>*<v2^2>*<deltapt^2> term
-    auto v22_v22_deltapt2 = getNN(2, 2, Form("Ch%s",idname.c_str()), i);
-    v22_v22_deltapt2->Multiply(v22_v22_deltapt2);
+    auto v22 = getNN(2, 2, Form("Ch%s",idname.c_str()), i);
+
+    auto v22_v22_deltapt2 = dynamic_cast<TH1D*>(v22->Clone("v22_v22_deltapt2"));
+    v22_v22_deltapt2->Multiply(v22);
+
     v22_v22_deltapt2->Multiply(flowptcont->getCentralMomentHist(i,2));
     reth->Add(v22_v22_deltapt2,4);
 
     // Then subtract the <v2^4>*<deltapt^2> term
-    auto v24_deltapt2 = getNN(2,2,Form("Ch%s",idname.c_str()),i);
+    auto v24_deltapt2 = getNN(2,4,Form("Ch%s",idname.c_str()),i);
     v24_deltapt2->Multiply(flowptcont->getCentralMomentHist(i,2));
     reth->Add(v24_deltapt2,-1);
 
@@ -549,13 +944,16 @@ TH1D* Calculator::getNN(int nhar, int npar, std::string id, int i)
   //auto clone = (i < 0) ? flowcont : dynamic_cast<FlowContainer*>(flowcont->Clone("TempClone"));
   // Should be set via input config (json?)
   // if(fPropagateFCerrors) clone->SetPropagateErrors(kTRUE);
-  if (i >= 0) {
-    clone->OverrideMainWithSub(i, kFALSE);
-    Int_t nxb;
+  Int_t nxb;
     Double_t* xbs = flowcont->GetMultiRebin(nxb);
     clone->SetMultiRebin(nxb, xbs);
+  if (i >= 0) {
+    clone->OverrideMainWithSub(i, kFALSE);
+    
   };
-  if(id_changed) id = idname;
+  //std::cout<<"! "<<id<<std::endl;
+  //if(id_changed) id = idname;
+  //std::cout<<"!!! "<<id<<std::endl;
   clone->SetIDName(id.c_str());
   TH1D* reth = dynamic_cast<TH1D*>(clone->GetHistCorrXXVsMulti(Form("%i%u", nhar, npar), 0));
   reth->SetNameTitle(Form("%i%i",nhar,npar),Form("%i%i",nhar,npar));

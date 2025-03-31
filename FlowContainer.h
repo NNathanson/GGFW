@@ -46,8 +46,9 @@ class FlowContainer : public TNamed
   void SetXAxis();
   void RebinMulti(int rN)
   {
-    if (fProf)
+    if (fProf){
       fProf->RebinX(rN);
+    }
   };
   int GetNMultiBins() { return fProf->GetNbinsX(); }
   double GetMultiAtBin(int bin) { return fProf->GetXaxis()->GetBinCenter(bin); }

@@ -3,4 +3,4 @@
 cmake -S . -B build
 cmake --build build/
 cp build/libGGFW* .
-root -l exec/test.C
+root -l -q exec/test.C

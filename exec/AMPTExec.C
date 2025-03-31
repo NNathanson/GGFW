@@ -48,6 +48,8 @@ GFWCorrConfigs configs;
 Int_t fNBootstrapProfiles = 10; 
 UInt_t fConsistencyFlag = 3;
 Bool_t fUseEventWeightOne = kTRUE;
+Bool_t fUseCM = kTRUE;
+Bool_t fUseGap = kFALSE;
 Bool_t fUseNch = kFALSE;
 Int_t nCentBins = 30;
 Double_t* centBins = new Double_t[nCentBins+1];
@@ -74,13 +76,15 @@ std::vector<Double_t>* fPhiTrack(0);
 std::vector<Int_t>* fIdTrack(0);
 
 
-void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""){ 
+void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = "", TString suffix = ""){ 
     gSystem->Load("../libGGFW");
     gROOT->ProcessLine("#include <vector>");
     printf("Processing simulations w.  %s...\n", deformation.Data());
     
     for(int i(0);i<=nNchBins;++i) nchBins[i] = i;
+   //printf("test");
     for(int j(0);j<=nCentBins;++j) centBins[j] = j; 
+    
     int nMultiBins = (fUseNch)?nNchBins:nCentBins;
     double* multiBins = (fUseNch)?nchBins:centBins;
 
@@ -98,12 +102,12 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
     TFile* fout;
 
     if(small==kTRUE){
-      fout = new TFile(Form("output/AnalysisResult_%s_small.root", deformation.Data()), "RECREATE");
+      fout = new TFile(Form("output/AnalysisResult_%s_small%s.root", deformation.Data(),suffix.Data()), "RECREATE");
       chain->Add(path+deformation+"/central/ampt.root");
     }
 
     else{
-      fout = new TFile(Form("output/AnalysisResult_%s.root", deformation.Data()), "RECREATE");
+      fout = new TFile(Form("output/AnalysisResult_%s%s.root", deformation.Data(),suffix.Data()), "RECREATE");
       chain->Add(path+deformation+"/central/ampt*.root");
     }
   
@@ -130,18 +134,29 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
     fGFW = new GFW();
     fGFW->AddRegion("refN",-fEtaAcceptance,-fEtaV2Sep,1,1);
     fGFW->AddRegion("refP",fEtaV2Sep,fEtaAcceptance,1,1);
-    fGFW->AddRegion("mid",-fEtaAcceptance,fEtaAcceptance,1,2);
+    fGFW->AddRegion("full",-fEtaAcceptance,fEtaAcceptance,1,1);
     
 
-    //printf("setting configs\n");
-    configs.SetCorrs({"refP {2} refN {-2}", "refP {3} refN {-3}", "refP {4} refN {-4}", "refP {2 2} refN {-2 -2}"});
-    configs.SetHeads({"ChGap22", "ChGap32", "ChGap42", "ChGap24"});
-    configs.SetpTDifs({0, 0, 0, 0});
-    configs.SetpTCorrMasks({15, 1, 1, 3});
+    if(fUseGap){
+      configs.SetCorrs({"refP {2} refN {-2}", "refP {3} refN {-3}", "refP {4} refN {-4}", "refP {2 2} refN {-2 -2}"});
+      configs.SetHeads({"ChGap22", "ChGap32", "ChGap42", "ChGap24"});
+      configs.SetpTDifs({0, 0, 0, 0});
+      configs.SetpTCorrMasks({15, 1, 1, 3});
+    }
 
+    else{
+      configs.SetCorrs({"full {2 -2}", "full {3 -3}", "full {4 -4}", "full {2 2 -2 -2}"});
+      configs.SetHeads({"ChFull22", "ChFull32", "ChFull42", "ChFull24"});
+      configs.SetpTDifs({0, 0, 0, 0});
+      configs.SetpTCorrMasks({15, 1, 1, 3});
+    }
+
+    //std::cout<<"configs size: "<<configs.GetSize()<<std::endl;
     for (auto i = 0; i < configs.GetSize(); ++i) {
       corrconfigs.push_back(fGFW->GetCorrelatorConfig(configs.GetCorrs()[i], configs.GetHeads()[i], configs.GetpTDifs()[i]));
     }
+    //std::cout<<"corrconfigs size: "<<corrconfigs.size()<<std::endl;
+
     //printf("configs set\n");
 
     fGFW->CreateRegions();
@@ -149,11 +164,20 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
     //Setting up the FlowContainer
     //printf("Creating flow container\n");
     TObjArray *oba = new TObjArray();
-    oba->Add(new TNamed("ChGap22","ChGap22")); //for gap (|eta|>0.4) case
-    oba->Add(new TNamed("ChGap32","ChGap32")); //for gap (|eta|>0.4) case
-    oba->Add(new TNamed("ChGap42","ChGap42")); //gap case
-    oba->Add(new TNamed("ChGap24","ChGap24")); //for gap (|eta|>0.4) case
 
+    if(fUseGap){
+      oba->Add(new TNamed("ChGap22","ChGap22")); 
+      oba->Add(new TNamed("ChGap32","ChGap32")); 
+      oba->Add(new TNamed("ChGap42","ChGap42"));
+      oba->Add(new TNamed("ChGap24","ChGap24")); 
+    }
+
+    else{
+      oba->Add(new TNamed("ChFull22","ChFull22")); 
+      oba->Add(new TNamed("ChFull32","ChFull32")); 
+      oba->Add(new TNamed("ChFull42","ChFull42"));
+      oba->Add(new TNamed("ChFull24","ChFull24")); 
+    }
 
     fFC = new FlowContainer();
     TString fcname("FlowContainer");
@@ -167,13 +191,17 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
     
     //printf("Creating flow-pt container\n");
     fFCpt = new FlowPtContainer("FlowPtContainer");
-    fFCpt->setUseCentralMoments(kTRUE);
-    fFCpt->setUseGapMethod(kTRUE);
+    if(fUseCM){fFCpt->setUseCentralMoments(kTRUE);}
+    else{fFCpt->setUseCentralMoments(kFALSE);}
+
+    if(fUseGap){fFCpt->setUseGapMethod(kTRUE);}
+    else{fFCpt->setUseGapMethod(kFALSE);}
+
     fFCpt->initialise(nMultiBins,multiBins,fPtMpar, configs, fNBootstrapProfiles);
     //printf("flow-pt container created\n");
 
 
-    printf("Event loop entries : %i \n", nOfEvents);    
+    printf("Event loop entries : %i \n", nOfEvents);    //nOfEvents
     //EVENT LOOP
     for(Int_t i(0); i < nOfEvents; i++){
         if (i % 1000 == 0) std::cout << "event no." << i << std::endl;   // Needed for event history           
@@ -203,17 +231,41 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
           Double_t leta = fEtaTrack->at(ipart);
           if(TMath::Abs(leta) > 0.8) continue;
           if(std::isnan(leta)) continue;
+
+
           Double_t pt = fPtTrack->at(ipart);
           if(pt<ptMin || pt>ptMax) continue;
+
+
           if(leta<-fEtaV2Sep) lNegCount++;
           if(leta>fEtaV2Sep) lPosCount++;
           if(TMath::Abs(leta)<fEtaAcceptance) nTotNoTracksMC++; //Nch calculated in EtaNch region
+
           Double_t phi = fPhiTrack->at(ipart);
-          //std::cout << "eta:  "<< leta << std::endl;
-          //std::cout << "phi:  "<< phi << std::endl;
-          fFCpt->fill(1,pt);
+
+          
+          if(!fUseGap){fFCpt->fill(1,pt);} 
+          else{
+            if(TMath::Abs(leta)<fEtaV2Sep){
+              fFCpt->fill(1,pt);
+            }
+          }
+
+
+          if (!fUseGap){
+            std::complex<double> q2p = {std::cos(2 * phi), std::sin(2 * phi)};
+            std::complex<double> q2n = {std::cos(-2 * phi), std::sin(-2 * phi)};
+            fFCpt->fillArray(q2p, q2n, pt, 1);
+            fFCpt->fillArray(1.0, 1.0, 1, 1); 
+          }
+
+          
+
+
+
           //NB!!! ADD IF STATEMENT
           fGFW->Fill(leta,1,phi,1,1); //filling  gap (bit mask 1)? Since this is MC, weight is 1.
+
           //std::cout<<"gfw fill statement done"<<std::endl;
 
       
@@ -247,29 +299,26 @@ void AMPTExec(TString deformation = "", Bool_t small = kFALSE, TString path = ""
       //std::cout << "FillCMProfiles executed" << std::endl;
 
       //std::cout<<"fProf bins: "<<fFC->fProf->GetNumberOfBins()<<std::endl;
-
-      fMultiDist->Fill(l_Multi);
       
+      fMultiDist->Fill(l_Multi);
+      if(!fUseGap){fFCpt->fillVnPtStdProfiles(l_Multi,l_Random);}
+      
+
       for (uint l_ind = 0; l_ind < corrconfigs.size(); ++l_ind) {
-        //std::cout<<"config: "<<corrconfigs.at(l_ind).Head.c_str()<<std::endl;
-        //FillFCs(corrconfigs.at(l_ind),l_Multi,l_Random);
+        
         if (!corrconfigs.at(l_ind).pTDif) {
-          //std::cout<<"dnx calc:"<<std::endl;
+          
           auto dnx = fGFW->Calculate(corrconfigs.at(l_ind), 0, kTRUE).real();
-          //std::cout<<"dnx: "<<dnx<<std::endl;
+         // std::cout<<dnx<<std::endl;
           if (dnx == 0)
             continue;
-          
-          //std::cout<<"val calc:"<<std::endl;
-          auto val = fGFW->Calculate(corrconfigs.at(l_ind), 0, kFALSE).real() / dnx;
           //std::cout<<"???"<<std::endl;
-          //std::cout<<"val: "<<val<<std::endl;
+          auto val = fGFW->Calculate(corrconfigs.at(l_ind), 0, kFALSE).real() / dnx;
+          //td::cout<<"??? "<<val<<std::endl;
           if (std::abs(val) < 1) {
               fFC->FillProfile(corrconfigs.at(l_ind).Head.c_str(),l_Multi,val,(fUseEventWeightOne)?1:dnx,l_Random);
               
-
-              fFCpt->fillVnDeltaPtProfiles(l_Multi, val, dnx, l_Random, configs.GetpTCorrMasks()[l_ind]);
-              //std::cout<<"????"<<std::endl;
+              if(fUseGap){fFCpt->fillVnPtProfiles(l_Multi, val, dnx, l_Random, configs.GetpTCorrMasks()[l_ind]);}
           }
           continue;
         }

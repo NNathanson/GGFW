@@ -19,10 +19,8 @@ void DrawVnPt(TString deformation = "") {
   //Flow-Pt Cumulants
   cout<<"--------------------------------C22pt--------------------------------"<<endl;
   TH1D* hC22pt = out->getHist(&Calculator::getCV22pt);
-  TH1D* hC22ptNorm = out->getNorm(2,2,1);
-  TH1D* hC22ptTest0 = out->getHist(&Calculator::getV22pt_Mpt0);
-  TH1D* hC22ptTest1 = out->getHist(&Calculator::getV22pt_Mpt1);
-  TH1D* hMpt1 = out->getHist(&Calculator::getMpt);
+  // TH1D* hC22ptNorm = out->getNorm(2,2,1);
+
 
   cout<<"--------------------------------C22pt2--------------------------------"<<endl;
   TH1D* hC22pt2 = out->getHist(&Calculator::getCV22pt2);
@@ -49,7 +47,7 @@ void DrawVnPt(TString deformation = "") {
 
 
 
-  TFile *outf =  new TFile(Form("hists/HistsVnPt_%s.root",deformation.Data()), "RECREATE");
+  TFile *outf =  new TFile(Form("hists/HistsVnPt_%s_test.root",deformation.Data()), "RECREATE");
    // // cout<<"!!!!"<<endl;
   // ///////////////////////////////////////////////////
 
@@ -72,7 +70,7 @@ void DrawVnPt(TString deformation = "") {
   auto label = new TLatex();
   label->SetTextAlign(23);
   label->SetTextSize(0.03);
-  label->DrawLatex(15, 0.0047, "Xe-Xe"); //#sqrt{s_{NN}} = 5.36 TeV
+  label->DrawLatex(15, 0.0047, "Xe-Xe, #sqrt{s_{NN}} = 5.44 TeV"); //#sqrt{s_{NN}} = 5.36 TeV
   label->DrawLatex(15, 0.00455, "0.2 < #it{p}_{T} < 3 GeV/#it{c}");
   label->DrawLatex(15, 0.0044, "|#eta| < 0.8");
   label->DrawLatex(40, 0.0029, "v_{n}: |#Delta#eta| > 0.8");
@@ -103,7 +101,7 @@ void DrawVnPt(TString deformation = "") {
   auto label2 = new TLatex();
   label2->SetTextAlign(23);
   label2->SetTextSize(0.03);
-  label2->DrawLatex(15, -1.16, "Xe-Xe");
+  label2->DrawLatex(15, -1.16, "Xe-Xe, #sqrt{s_{NN}} = 5.44 TeV");
   label2->DrawLatex(15, -1.17, "0.2 < #it{p}_{T} < 3 GeV/#it{c}");
   label2->DrawLatex(15, -1.18, "|#eta| < 0.8");
   label2->DrawLatex(45, -1.06, "v_{n}: |#Delta#eta| > 0.8");
@@ -129,7 +127,7 @@ void DrawVnPt(TString deformation = "") {
   auto label3 = new TLatex();
   label3->SetTextAlign(23);
   label3->SetTextSize(0.03);
-  label3->DrawLatex(15, 4.5, "Xe-Xe");
+  label3->DrawLatex(15, 4.5, "Xe-Xe, #sqrt{s_{NN}} = 5.44 TeV");
   label3->DrawLatex(15, 4.45, "0.2 < #it{p}_{T} < 3 GeV/#it{c}");
   label3->DrawLatex(15, 4.4, "|#eta| < 0.8");
   label3->DrawLatex(45, 4.05, "v_{n}: |#Delta#eta| > 0.8");
@@ -154,7 +152,7 @@ void DrawVnPt(TString deformation = "") {
   auto label4 = new TLatex();
   label4->SetTextAlign(23);
   label4->SetTextSize(0.03);
-  label4->DrawLatex(15, -4.4, "Xe-Xe");
+  label4->DrawLatex(15, -4.4, "Xe-Xe, #sqrt{s_{NN}} = 5.44 TeV");
   label4->DrawLatex(15, -4.5, "0.2 < #it{p}_{T} < 3 GeV/#it{c}");
   label4->DrawLatex(15, -4.6, "|#eta| < 0.8");
   label4->DrawLatex(45, -3.8, "v_{n}: |#Delta#eta| > 0.8");
@@ -186,7 +184,7 @@ void DrawVnPt(TString deformation = "") {
   auto label7 = new TLatex();
   label7->SetTextAlign(23);
   label7->SetTextSize(0.03);
-  label7->DrawLatex(40, 0.004, "Xe-Xe");
+  label7->DrawLatex(40, 0.004, "Xe-Xe, #sqrt{s_{NN}} = 5.44 TeV");
   label7->DrawLatex(40, 0.0033, "0.2 < #it{p}_{T} < 3 GeV/#it{c}");
   label7->DrawLatex(40, 0.0026, "|#eta| < 0.8");
   label7->DrawLatex(10, -0.005, "v_{n}: |#Delta#eta| > 0.8");

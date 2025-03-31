@@ -19,16 +19,14 @@ class Calculator
   using ObsFunc = TH1D* (Calculator::*)(int);
   using PtDiffFunc = TH1D* (Calculator::*)(int, double, double);
   Calculator();
-  Calculator(TFile* infile);
+  Calculator(TFile* infile,bool gap);
   virtual ~Calculator();
-  void readData(TFile* infile);
+  void readData(TFile* infile,bool gap);
   void setContainerSuffix(std::string cont_suffix) { if(!cont_suffix.empty() && cont_suffix.at(0)!='_') cont_suffix.insert(cont_suffix.begin(),'_'); current_suffix = cont_suffix; };
   void SetIDName(std::string name) { idname = name; id_changed = true;}
   TH1D* calculate(ObsFunc func, int i);
   TH1D* calculate(PtDiffFunc func, int i, double min, double max);
-
-
-  TH1D* getNormNC(int n, int m, int k, int i);
+  void Rebin(int nbins, double* binedges);
 
   // Flow coefficients
   TH1D* getVNN(int nhar, int npar, std::string id, int i, bool onPt = kFALSE, double min = -1, double max = -1);
@@ -42,6 +40,29 @@ class Calculator
   TH1D* getV32pt(int i, double min, double max) { return getVNN(3, 2, "ChGap", i, kTRUE, min, max); }
   TH1D* getV42pt(int i, double min, double max) { return getVNN(4, 2, "ChGap", i, kTRUE, min, max); }
   TH1D* getV24pt(int i, double min, double max) { return getVNN(2, 4, "ChFull", i, kTRUE, min, max); }
+ 
+  TH1D* test0CV22pt2(int i);
+  TH1D* test1CV22pt2(int i);
+  TH1D* test2CV22pt2(int i);
+  TH1D* test0CV22pt3(int i);
+  TH1D* test1CV22pt3(int i);
+  TH1D* test2CV22pt3(int i);
+  TH1D* test3CV22pt3(int i);
+  TH1D* test0CV22pt4(int i);
+  TH1D* test1CV22pt4(int i);
+  TH1D* test2CV22pt4(int i);
+  TH1D* test3CV22pt4(int i);
+  TH1D* test4CV22pt4(int i);
+  TH1D* test0CV24pt(int i);
+  TH1D* test1CV24pt(int i);
+  TH1D* test0CV24pt2(int i);
+  TH1D* test1CV24pt2(int i);
+  TH1D* test2CV24pt2(int i);
+  TH1D* v2test0CV24pt2(int i);
+  TH1D* v2test1CV24pt2(int i);
+  TH1D* v2test2CV24pt2(int i);
+  TH1D* v2test3CV24pt2(int i);
+  TH1D* v2test4CV24pt2(int i);
 
   // Flow correlations
   TH1D* getNN(int nhar, int npar, std::string id, int i);

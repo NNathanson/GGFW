@@ -25,16 +25,20 @@ class OutputHandler : public TNamed
 {
  public:
   OutputHandler();
-  OutputHandler(std::string name, std::string cont_suffix = "");
+  OutputHandler(std::string name, bool gap, std::string cont_suffix = "");
 
   ~OutputHandler();
 
-  void initialise(std::string name, std::string cont_suffix = "");
+  void initialise(std::string name, bool gap, std::string cont_suffix = "");
 
   TH1D* getHist(Calculator::ObsFunc func, StatHandler::StatMethod method = StatHandler::kVarianceOfSamples);
   TH1D* getHist(Calculator::PtDiffFunc func, double min, double max, StatHandler::StatMethod method = StatHandler::kVarianceOfSamples);
-  TH1D* getNorm(int n, int m, int k, StatHandler::StatMethod method = StatHandler::kVarianceOfSamples);
+  TH1D* getNC(Calculator::ObsFunc funcNum, int n, int m, Calculator::ObsFunc funcDenomMpt, StatHandler::StatMethod method = StatHandler::kVarianceOfSamples);
+  TH1D* getNCFull(Calculator::ObsFunc funcNum, int n, int m, Calculator::ObsFunc funcDenomMpt, StatHandler::StatMethod method = StatHandler::kVarianceOfSamples);
+
   void SetIDName(std::string name) { if(calculator) calculator->SetIDName(name); }
+  void Rebin(int nbins, double* binedges);
+
  private:
   Calculator* calculator;   //!
   StatHandler* stathandler; //!
